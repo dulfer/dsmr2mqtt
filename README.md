@@ -41,7 +41,7 @@ docker run -e "MQTT_HOST=mqtt.local" -e "REPORT_INTERVAL=15" --device=/dev/ttyUS
 
 Uses Home Assistant `DSMR Reader` sensor integration.  
 Integration details are available in the Home Assistant documentation pages.  
-🔗 https://www.home-assistant.io/integrations/dsmr_reader/#difference-with-the-dsmr-integration
+🔗 https://www.home-assistant.io/integrations/dsmr_reader/
 
 ## Mapping
 
