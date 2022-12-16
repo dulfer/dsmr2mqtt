@@ -1,0 +1,4 @@
+# DSMR2MQTT script requirements
+dsmr-parser
+paho-mqtt
+async-timeout
