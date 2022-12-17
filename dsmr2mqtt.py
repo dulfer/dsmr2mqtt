@@ -6,14 +6,13 @@ from dsmr_parser.clients import SerialReader, SERIAL_SETTINGS_V5
 
 from paho.mqtt import client as mqtt_client
 
-
 # ENVIRONMENT VARIABLES
 MQTT_HOST = os.environ.get('MQTT_HOST', 'mqtt')
-MQTT_PORT = os.environ.get('MQTT_PORT', 1883)
+MQTT_PORT = int(os.environ.get('MQTT_PORT', 1883))
 MQTT_CLIENTID = os.environ.get('MQTT_CLIENTID', 'dsmr2mqtt')
 DSMR_PORT = os.environ.get('DSMR_PORT', '/dev/ttyUSB0')
 DSMR_VERSION = os.environ.get('DSMR_VERSION', 5)
-REPORT_INTERVAL = os.environ.get('REPORT_INTERVAL', 5)
+REPORT_INTERVAL = int(os.environ.get('REPORT_INTERVAL', 15))
 
 print("MQTT Host:       ", MQTT_HOST)
 print("MQTT Port:       ", MQTT_PORT)
@@ -75,5 +74,3 @@ for telegram in serial_reader.read_as_object():
     if ((datetime.datetime.now() - lastrun).seconds >= REPORT_INTERVAL):
         lastrun = datetime.datetime.now()
         publish(telegram)
-
-
