@@ -36,6 +36,10 @@ def connect_mqtt():
 def process(topic, value):
   try:
     client.publish(topic, str(value))
+    
+    if (topic == "dsmr/consumption/gas/delivered"):
+        client.publish("dsmr/consumption/gas/read_at", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
   except KeyError:
     print(f"{topic} has no value")
 
@@ -56,10 +60,10 @@ def publish(telegram):
   process("dsmr/meter-stats/dsmr_meter_type", telegram.DEVICE_TYPE.value)
   process("dsmr/reading/phase_currently_delivered_l1", telegram.INSTANTANEOUS_ACTIVE_POWER_L1_POSITIVE.value)
   process("dsmr/reading/phase_currently_returned_l1", telegram.INSTANTANEOUS_ACTIVE_POWER_L1_NEGATIVE.value)
-  process("dsmr/meter-stats/gas_meter_id", telegram.EQUIPMENT_IDENTIFIER_GAS.value)
-  process("dsmr/consumption/gas/read_at", telegram.HOURLY_GAS_METER_READING.value)
   process("dsmr/reading/phase_voltage_l1", telegram.INSTANTANEOUS_VOLTAGE_L1.value)
   process("dsmr/reading/phase_power_current_l1", telegram.INSTANTANEOUS_CURRENT_L1.value)
+  process("dsmr/meter-stats/gas_meter_id", telegram.EQUIPMENT_IDENTIFIER_GAS.value)
+  process("dsmr/consumption/gas/delivered", telegram.HOURLY_GAS_METER_READING.value)
 
 client = connect_mqtt()
 lastrun = datetime.datetime(2000,1,1)
