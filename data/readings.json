@@ -1,0 +1,8 @@
+{
+  "file_date": "2022-12-23 00:00:03",
+  "gas_meter_value": 1234.56,
+  "electricity_low_value": 1234.56,
+  "electricity_high_value": 1234.56,
+  "electricity_delivered_low_value": 1234.56,
+  "electricity_delivered_high_value": 1234.56
+}

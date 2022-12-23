@@ -1,7 +1,7 @@
 FROM alpine:latest
 
 # UPDATE IMAGE
-RUN apk update && apk upgrade -q --prune
+RUN apk update && apk upgrade -q --prune && apk add --no-cache tzdata
 
 # SETUP PYTHON
 ENV PYTHONUNBUFFERED=1

@@ -10,9 +10,9 @@ Reads telegrams from DSMR meter and publishes the output to MQTT.
 
 ## Why?
 
-Running Home Assistant as container in a k8s cluster, reading the output of my smart utility meter is challenging if the controller  migrates the container to a node that doesn't have the P1 cable attached to its USB port.
+Running Home Assistant as container in a k8s cluster, reading the output of my smart utility meter is challenging if the container is migrated to a node that doesn't have the P1 cable attached to its USB ports. 
 
-Not owning a '[SlimmeLezer](https://www.zuidwijk.com/product/slimmelezer/)', nor '[Smart Gateway](https://smartgateways.nl/' but just a P1 cable to read out my smart electricity meter, this weekend project was started to have the telegrams read from the meter and pushed to MQTT for Home Assistant to pick up and process. Regardless on which node it is running.
+Not owning a 'Slimme Meter' but just a P1 cable to read out my smart electricity meter, this project is started to have the telegrams read from the meter and pushed to MQTT for Home Assistant to pick up and process. Regardless on which nodew it is running.
 
 ## Docker
 
@@ -28,13 +28,54 @@ The docker container expects the following environment variables to be set:
 | DSMR_PORT | port to DSMR serial connection | '/dev/ttyUSB0' |
 | DSMR_VERSION | *not supported* | 5 |
 | REPORT_INTERVAL | Report to MQTT every x seconds | 5 |
+| GAS_CURRENT_CONSUMPTION_REPORT_INTERVAL | Report current gas consumption every x seconds | 600 |
+| READINGS_PERISTENCE_DATA_PATH | Path to file where readings are stored | /data/readings.json |
+
 
 ### Start container
 
 ```bash
 # build the image
 docker build . --tag dsmr2mqtt
-docker run -e "MQTT_HOST=mqtt.local" -e "REPORT_INTERVAL=15" --device=/dev/ttyUSB0 dsmr2mqtt
+docker run -e "MQTT_HOST=mqtt.local" --device=/dev/ttyUSB0 dsmr2mqtt
+```
+
+#### Docker Compose
+
+```yaml
+version: "3.7"
+
+services:
+  dsmr2mqtt:
+    container_name: dsmr2mqtt
+    restart: unless-stopped
+    image: dsmr2mqtt:2022.12.23-dev
+    environment:
+      - TZ=Europe/Amsterdam
+      - MQTT_HOST=mqtt.local
+      - REPORT_INTERVAL=15
+      - GAS_CURRENT_CONSUMPTION_REPORT_INTERVAL=600
+    volumes:
+      - ./data:/data:rw
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+```
+
+## Meter readings persistence
+
+To support accurate daily figures across restarts, the meter readings are stored at midnight in `/data/readings.json`. Make sure the data-directory is present on the host and exposed to the docker container as `/data` using a volume.
+
+Structure of this file is as follows:
+
+```json
+{
+  "file_date": "2022-12-23 15:41:00",
+  "gas_meter_value": 1234.56,
+  "electricity_low_value": 1234.56,
+  "electricity_high_value": 1234.56,
+  "electricity_delivered_low_value": 1234.56,
+  "electricity_delivered_high_value": 1234.56
+}
 ```
 
 ## Home Assistant
