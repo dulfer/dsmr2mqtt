@@ -1,8 +1,38 @@
 {
-  "file_date": "2022-12-23 00:00:03",
-  "gas_meter_value": 1234.56,
-  "electricity_low_value": 1234.56,
-  "electricity_high_value": 1234.56,
-  "electricity_delivered_low_value": 1234.56,
-  "electricity_delivered_high_value": 1234.56
+  "file_date": "2023-01-01 00:00:00.0000",
+  "electricity_returned_tariff_high": {
+      "day": 0,
+      "hour": 0,
+      "month": 0,
+      "week": 0,
+      "year": 0
+  },
+  "electricity_returned_tariff_low": {
+      "day": 0,
+      "hour": 0,
+      "month": 0,
+      "week": 0,
+      "year": 0
+  },
+  "electricity_used_tariff_high": {
+      "day": 0,
+      "hour": 0,
+      "month": 0,
+      "week": 0,
+      "year": 0
+  },
+  "electricity_used_tariff_low": {
+      "day": 0,
+      "hour": 0,
+      "month": 0,
+      "week": 0,
+      "year": 0
+  },
+  "gas_used": {
+      "day": 0,
+      "hour": 0,
+      "month": 0,
+      "week": 0,
+      "year": 0
+  }
 }
