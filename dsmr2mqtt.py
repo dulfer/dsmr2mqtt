@@ -7,6 +7,9 @@ from dsmr_parser.clients import SerialReader, SERIAL_SETTINGS_V5
 
 from paho.mqtt import client as mqtt_client
 
+# convert value to boolean
+def str2bool(value):
+  return value.lower() in ("yes", "true", "on", "y", "t", "1", "high")
 
 # ENVIRONMENT VARIABLES
 MQTT_HOST = os.environ.get('MQTT_HOST', 'mqtt')
@@ -15,6 +18,8 @@ MQTT_CLIENTID = os.environ.get('MQTT_CLIENTID', 'dsmr2mqtt')
 DSMR_PORT = os.environ.get('DSMR_PORT', '/dev/ttyUSB0')
 DSMR_VERSION = os.environ.get('DSMR_VERSION', 5)
 REPORT_INTERVAL = int(os.environ.get('REPORT_INTERVAL', 15))
+REPORT_CYCLES = str2bool(os.environ.get('REPORT_CYCLES', 'false'))
+REPORT_CUSTOM_CYCLES = str2bool(os.environ.get('REPORT_CUSTOM_CYCLES', 'false'))
 GAS_CURRENT_CONSUMPTION_REPORT_INTERVAL = int(
     os.environ.get('GAS_CURRENT_CONSUMPTION_REPORT_INTERVAL', 60))
 READINGS_PERISTENCE_DATA_PATH = os.environ.get(
@@ -29,8 +34,7 @@ print("Report interval: ", REPORT_INTERVAL, "s")
 
 current_date = datetime.combine(datetime.today(), datetime.min.time())
 
-def str2bool(value):
-  return value.lower() in ("yes", "true", "on", "y", "t", "1", "high")
+
 
 class MeterPeriod:
     def __init__(self, name, period, start_value=0):
@@ -42,26 +46,26 @@ class MeterPeriod:
 
     def get_current_period(self):
         date = datetime.now()
-        period = self.period
-        if period == 'H':
+        p = self.period
+        if p == 'H':
             rollover = date.hour
-        elif period == 'D':
+        elif p == 'D':
             rollover = date.day
-        elif period == 'W':
+        elif p == 'W':
             rollover = date.isocalendar()[1]
-        elif period == 'M':
+        elif p == 'M':
             rollover = date.month
-        elif period == 'Y':
+        elif p == 'Y':
             rollover = date.year
 
         return rollover
 
     def update_value(self, value):
-        period = self.get_current_period()
-        if self.current_period != period:
+        if self.current_period != self.get_current_period():
             self.start_value = value
+            self.current_period = self.get_current_period()
 
-        self.counter = value - self.start_value
+        self.counter = (value - self.start_value)
 
     def get_value(self):
         return round(self.counter, 3)
@@ -220,40 +224,69 @@ def process(topic, value):
             stats.update_gas_consumption(str(value))
             client.publish("dsmr/consumption/gas/read_at", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
             client.publish("dsmr/consumption/gas/currently_delivered", stats.gas_currently_used())
-            client.publish("dsmr/day-consumption/gas", stats.gas_used.day.get_value())
-            client.publish("dsmr/current-month/gas", stats.gas_used.month.get_value())
-            client.publish("dsmr/current-year/gas", stats.gas_used.year.get_value())
 
-            # also periodically update electricity totals
-            client.publish("dsmr/day-consumption/electricity_merged", stats.electricity_used_today())
-            client.publish("dsmr/day-consumption/electricity_returned_merged", stats.electricity_returned_today())
+            # Report consumption cycles
+            if (REPORT_CYCLES):
+              client.publish("dsmr/day-consumption/gas", stats.gas_used.day.get_value())
+              client.publish("dsmr/current-month/gas", stats.gas_used.month.get_value())
+              client.publish("dsmr/current-year/gas", stats.gas_used.year.get_value())
+
+              # also periodically update electricity totals
+              client.publish("dsmr/day-consumption/electricity_merged", stats.electricity_used_today())
+              client.publish("dsmr/day-consumption/electricity_returned_merged", stats.electricity_returned_today())
+              client.publish("dsmr/current-month/electricity_merged", round(stats.electricity_used_tariff_high.month.get_value() + stats.electricity_used_tariff_low.month.get_value()  , 3))
+              client.publish("dsmr/current-month/electricity_returned_merged", round(stats.electricity_returned_tariff_high.month.get_value() + stats.electricity_returned_tariff_low.month.get_value()  , 3))
+              
+              if (REPORT_CUSTOM_CYCLES):
+                client.publish("dsmr/hour-consumption/electricity_merged", round(stats.electricity_used_tariff_high.hour.get_value() + stats.electricity_used_tariff_low.hour.get_value()  , 3))
+                client.publish("dsmr/hour-consumption/electricity_returned_merged", round(stats.electricity_returned_tariff_high.hour.get_value() + stats.electricity_returned_tariff_low.hour.get_value()  , 3))
+                client.publish("dsmr/current-year/electricity_merged", round(stats.electricity_used_tariff_high.year.get_value() + stats.electricity_used_tariff_low.year.get_value()  , 3))
+                client.publish("dsmr/current-year/electricity_returned_merged", round(stats.electricity_returned_tariff_high.year.get_value() + stats.electricity_returned_tariff_low.year.get_value()  , 3))
 
         if (topic == "dsmr/reading/electricity_delivered_1"):
             stats.update_electricity_used('0001', str(value))
-            client.publish('dsmr/day-consumption/electricity1', stats.electricity_used_tariff_low.day.get_value())
-            client.publish('dsmr/current-month/electricity1', stats.electricity_used_tariff_low.month.get_value())
-            client.publish('dsmr/current-year/electricity1', stats.electricity_used_tariff_low.year.get_value())
+
+            # Report consumption cycles
+            if (REPORT_CYCLES):
+              client.publish('dsmr/day-consumption/electricity1', stats.electricity_used_tariff_low.day.get_value())
+              client.publish('dsmr/current-month/electricity1', stats.electricity_used_tariff_low.month.get_value())
+              client.publish('dsmr/current-year/electricity1', stats.electricity_used_tariff_low.year.get_value())
+              
+              if (REPORT_CUSTOM_CYCLES):
+                client.publish('dsmr/hour-consumption/electricity1', stats.electricity_used_tariff_low.hour.get_value())
 
         if (topic == "dsmr/reading/electricity_delivered_2"):
             stats.update_electricity_used('0002', str(value))
-            client.publish('dsmr/day-consumption/electricity2', stats.electricity_used_tariff_high.day.get_value())
-            client.publish('dsmr/current-month/electricity2', stats.electricity_used_tariff_high.month.get_value())
-            client.publish('dsmr/current-year/electricity2', stats.electricity_used_tariff_high.year.get_value())
+            # Report consumption cycles
+            if (REPORT_CYCLES):
+              client.publish('dsmr/day-consumption/electricity2', stats.electricity_used_tariff_high.day.get_value())
+              client.publish('dsmr/current-month/electricity2', stats.electricity_used_tariff_high.month.get_value())
+              client.publish('dsmr/current-year/electricity2', stats.electricity_used_tariff_high.year.get_value())
 
+              if (REPORT_CUSTOM_CYCLES):
+                client.publish('dsmr/hour-consumption/electricity2', stats.electricity_used_tariff_high.hour.get_value())
 
         if (topic == "dsmr/reading/electricity_returned_1"):
             stats.update_electricity_returned('0001', str(value))
-            client.publish('dsmr/day-consumption/electricity1_returned', stats.electricity_returned_tariff_low.day.get_value())
-            client.publish('dsmr/current-month/electricity1_returned', stats.electricity_returned_tariff_low.month.get_value())
-            client.publish('dsmr/current-year/electricity1_returned', stats.electricity_returned_tariff_low.year.get_value())
+            # Report consumption cycles
+            if (REPORT_CYCLES):
+              client.publish('dsmr/day-consumption/electricity1_returned', stats.electricity_returned_tariff_low.day.get_value())
+              client.publish('dsmr/current-month/electricity1_returned', stats.electricity_returned_tariff_low.month.get_value())
+              client.publish('dsmr/current-year/electricity1_returned', stats.electricity_returned_tariff_low.year.get_value())
 
+              if (REPORT_CUSTOM_CYCLES):
+                client.publish('dsmr/hour-consumption/electricity1_returned', stats.electricity_returned_tariff_low.hour.get_value())
 
         if (topic == "dsmr/reading/electricity_returned_2"):
             stats.update_electricity_returned('0002', str(value))
-            client.publish('dsmr/day-consumption/electricity2_returned', stats.electricity_returned_tariff_high.day.get_value())
-            client.publish('dsmr/current-month/electricity2_returned', stats.electricity_returned_tariff_high.month.get_value())
-            client.publish('dsmr/current-year/electricity2_returned', stats.electricity_returned_tariff_high.year.get_value())
+            # Report consumption cycles
+            if (REPORT_CYCLES):
+              client.publish('dsmr/day-consumption/electricity2_returned', stats.electricity_returned_tariff_high.day.get_value())
+              client.publish('dsmr/current-month/electricity2_returned', stats.electricity_returned_tariff_high.month.get_value())
+              client.publish('dsmr/current-year/electricity2_returned', stats.electricity_returned_tariff_high.year.get_value())
 
+              if (REPORT_CUSTOM_CYCLES):
+                client.publish('dsmr/hour-consumption/electricity2', stats.electricity_used_tariff_high.hour.get_value())
 
         client.publish(topic, str(value))
 
@@ -298,7 +331,6 @@ def publish(telegram):
             telegram.EQUIPMENT_IDENTIFIER_GAS.value)
     process("dsmr/consumption/gas/delivered",
             telegram.HOURLY_GAS_METER_READING.value)
- 
 
 def persist_datapoints():
 

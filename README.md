@@ -2,8 +2,7 @@
 
 Reads telegrams from DSMR meter and publishes the output to MQTT.  
 
-## Dependencies
-
+### Dependencies
 | | |
 |-|-|
 | dsmr_parser | https://github.com/ndokter/dsmr_parser |
@@ -11,7 +10,7 @@ Reads telegrams from DSMR meter and publishes the output to MQTT.
 
 ## Why?
 
-Running Home Assistant as container in a k8s cluster, reading the output of my smart utility meter is challenging if the container is migrated to a node that doesn't have the P1 cable attached to its USB ports.
+Running Home Assistant as container in a k8s cluster, reading the output of my smart utility meter is challenging if the container is migrated to a node that doesn't have the P1 cable attached to its USB ports. 
 
 Not owning a 'Slimme Meter' but just a P1 cable to read out my smart electricity meter, this project is started to have the telegrams read from the meter and pushed to MQTT for Home Assistant to pick up and process. Regardless on which nodew it is running.
 
@@ -24,13 +23,16 @@ The docker container expects the following environment variables to be set:
 |ENV|Description|Default Value|
 |-|-|-|
 | MQTT_HOST | MQTT broker host | 'mqtt' |
-| MQTT_PORT | MQTT broker port | 1883 |
+| MQTT_PORT | self explanatory... | 1883 |
 | MQTT_CLIENTID | client id used to connect to MQTT broker | 'dsmr2mqtt' |
 | DSMR_PORT | port to DSMR serial connection | '/dev/ttyUSB0' |
 | DSMR_VERSION | *not supported* | 5 |
+| REPORT_CYCLES | Report period consumption/production totals (day, month, year) supported by DSMR Reader |
+| REPORT_CUSTOM_CYCLES | Report custom periodic totals (hourly), not natively supported by DSMR Reader |
 | REPORT_INTERVAL | Report to MQTT every x seconds | 5 |
 | GAS_CURRENT_CONSUMPTION_REPORT_INTERVAL | Report current gas consumption every x seconds | 600 |
 | READINGS_PERISTENCE_DATA_PATH | Path to file where readings are stored | /data/readings.json |
+
 
 ### Start container
 
@@ -63,51 +65,20 @@ services:
 
 ## Meter readings persistence
 
-To support support for periodic consumption figures across restarts, the meter readings are stored every hour, on the hour, in `/data/readings.json`. Make sure the data-directory is present on the host and exposed to the docker container as `/data` using a volume.
+To support accurate daily figures across restarts, the meter readings are stored at midnight in `/data/readings.json`. Make sure the data-directory is present on the host and exposed to the docker container as `/data` using a volume.
 
 Structure of this file is as follows:
 
 ```json
 {
   "file_date": "2022-12-23 15:41:00",
-  "electricity_returned_tariff_high": {
-      "hour": 1234.678,     // meter reading at start of hour
-      "day": 1234.678,      // meter reading at start of day
-      "week": 1234.678,     // meter reading at start of week
-      "month": 1234.678,    // meter reading at start of month
-      "year": 1234.678      // meter reading at start of year
-  },
-  "electricity_returned_tariff_low": {
-      "hour": 1234.678,  
-      "day": 1234.678,   
-      "week": 1234.678,  
-      "month": 1234.678, 
-      "year": 1234.678   
-  },
-  "electricity_used_tariff_high": {
-      "hour": 1234.678, 
-      "day": 1234.678,  
-      "week": 1234.678, 
-      "month": 1234.678,
-      "year": 1234.678  
-  },
-  "electricity_used_tariff_low": {
-      "hour": 1234.678, 
-      "day": 1234.678,  
-      "week": 1234.678, 
-      "month": 1234.678,
-      "year": 1234.678  
-  },
-  "gas_used": {
-      "hour": 1234.678, 
-      "day": 1234.678,  
-      "week": 1234.678, 
-      "month": 1234.678,
-      "year": 1234.678  
-  }
+  "gas_meter_value": 1234.56,
+  "electricity_low_value": 1234.56,
+  "electricity_high_value": 1234.56,
+  "electricity_delivered_low_value": 1234.56,
+  "electricity_delivered_high_value": 1234.56
 }
 ```
-
 
 ## Home Assistant
 
